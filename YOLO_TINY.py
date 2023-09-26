@@ -5,7 +5,7 @@ KNOWN_DISTANCE = 1.143  # meters (approximately 45 inches)
 VEHICLE_WIDTH = 70     # pixels
 
 # Object detector constants
-CONFIDENCE_THRESHOLD = 0.2
+CONFIDENCE_THRESHOLD = 0.3
 NMS_THRESHOLD = 0.1
 
 # Colors for object detection
@@ -25,7 +25,7 @@ model = cv.dnn_DetectionModel(yoloNet)
 model.setInputParams(size=(416, 416), scale=1/255, swapRB=True)
 
 # Load test video
-cap = cv.VideoCapture('./Data/vid2.mp4')
+cap = cv.VideoCapture('./Data/vid5.mp4')
 
 # Define the desired video frame size (464x464)
 frame_width = 464

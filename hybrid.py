@@ -14,6 +14,10 @@ plate_detector = cv.CascadeClassifier("./BD_numberPlate_cascade_v1.xml")
 # Video Capture
 cap = cv.VideoCapture('./Data/vid5.mp4')
 
+# Set the desired resolution (e.g., 1280x720)
+cap.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
+cap.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
+
 if not cap.isOpened():
     print('Error Reading Video')
 
@@ -25,7 +29,7 @@ save_dir = os.path.join(home_dir, "personalSuv/BUET-thesis/YOLO-Tiny(final)/dete
 convert_gray = True
 
 # Specify the scaling factor for the captured plate image
-scaling_factor = 1.1
+scaling_factor = 5
 
 # Load pre-trained YOLOv4-tiny model
 yoloNet = cv.dnn.readNet('yolov4-tiny.weights', 'yolov4-tiny.cfg')
@@ -85,7 +89,7 @@ while True:
                 cv.putText(frame, distance_text, (text_x, text_y),
                            cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
 
-                # Add "alert" tag when the vehicle or car is too close
+                # Add "aDIS/licence_datalert" tag when the vehicle or car is too close
                 if distance < 1:
                     alert_text = "Vehicle Detected!"
                     alert_size, _ = cv.getTextSize(alert_text, cv.FONT_HERSHEY_SIMPLEX, 0.5, 2)
@@ -96,9 +100,9 @@ while True:
                     cv.putText(frame, alert_text, (alert_x, alert_y),
                                cv.FONT_HERSHEY_SIMPLEX, 0.4, text_color, 1, cv.LINE_AA)
 
-                # Detect license plate within the vehicle region
+                # Detect license plate within the vehicle region with adjusted parameters
                 plate = plate_detector.detectMultiScale(
-                    frame[box[1]:box[1]+box[3], box[0]:box[0]+box[2]], scaleFactor=1.1, minNeighbors=10, minSize=(45, 45))
+                    frame[box[1]:box[1]+box[3], box[0]:box[0]+box[2]], scaleFactor=1.05, minNeighbors=5, minSize=(60, 80))
 
                 for (x_plate, y_plate, w_plate, h_plate) in plate:
                     # Draw rectangle around the detected license plate

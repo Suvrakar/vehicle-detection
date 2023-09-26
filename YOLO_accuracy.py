@@ -1,91 +1,61 @@
-import cv2 as cv
-import time
+import numpy as np
 
-# Distance constants
-KNOWN_DISTANCE = 1.143  # meters (approximately 45 inches)
-VEHICLE_WIDTH = 70     # pixels
+# Example ground truth bounding boxes (4 boxes with [x, y, width, height] format)
+ground_truth_boxes = np.array([
+    [100, 150, 50, 50],
+    [200, 250, 60, 60],
+    [300, 350, 70, 70],
+    [400, 450, 80, 80]
+])
 
-# Object detector constants
-CONFIDENCE_THRESHOLD = 0.2
-NMS_THRESHOLD = 0.1
+# Example predicted bounding boxes (4 boxes with [x, y, width, height] format)
+predicted_bounding_boxes = np.array([
+    [110, 160, 45, 45],
+    [220, 260, 58, 58],
+    [310, 355, 72, 72],
+    [410, 460, 85, 85]
+])
 
-# Load pre-trained YOLOv4-tiny model
-yoloNet = cv.dnn.readNet('yolov4-tiny.weights', 'yolov4-tiny.cfg')
+# Calculate the intersection over union (IoU) between ground truth and predicted bounding boxes
+def calculate_iou(box1, box2):
+    x1 = max(box1[0], box2[0])
+    y1 = max(box1[1], box2[1])
+    x2 = min(box1[0] + box1[2], box2[0] + box2[2])
+    y2 = min(box1[1] + box1[3], box2[1] + box2[3])
+    intersection = max(0, x2 - x1) * max(0, y2 - y1)
+    union = (box1[2] * box1[3]) + (box2[2] * box2[3]) - intersection
+    return intersection / union
 
-# Set preferable backend and target for neural network
-yoloNet.setPreferableBackend(cv.dnn.DNN_BACKEND_CUDA)
-yoloNet.setPreferableTarget(cv.dnn.DNN_TARGET_CUDA_FP16)
+# Set a threshold for IoU to consider a detection as correct
+iou_threshold = 0.5
 
-# Set up object detection model
-model = cv.dnn_DetectionModel(yoloNet)
-model.setInputParams(size=(320, 320), scale=1/255, swapRB=True)
-
-# Load test video
-cap = cv.VideoCapture('./Data/vid2.mp4')
-
-# Initialize variables for counting true positives, false positives, and false negatives
+# Calculate precision and recall
 true_positives = 0
 false_positives = 0
 false_negatives = 0
 
-# Initialize variables for measuring FPS
-frame_count = 0
-start_time = time.time()
+for ground_truth_box in ground_truth_boxes:
+    detected = False
+    for predicted_box in predicted_bounding_boxes:
+        iou = calculate_iou(ground_truth_box, predicted_box)
+        if iou >= iou_threshold:
+            true_positives += 1
+            detected = True
+            break
+    if not detected:
+        false_negatives += 1
 
-while True:
-    ret, frame = cap.read()
-    
-    if not ret:
-        # Break the loop if the video has ended
-        break
+false_positives = len(predicted_bounding_boxes) - true_positives
 
-    # Detect objects on the road
-    classes, scores, boxes = model.detect(frame, CONFIDENCE_THRESHOLD, NMS_THRESHOLD)
-
-    if classes is not None:
-        for i in range(len(classes)):
-            classid = int(classes[i])
-            score = float(scores[i])
-            box = boxes[i]
-            
-            if classid == 2 or classid == 7 or classid == 3:  # Vehicle and car class IDs in the YOLO model
-                # Calculate distance based on object width
-                distance = (VEHICLE_WIDTH * KNOWN_DISTANCE) / box[2]
-
-                # Check if the object is a true positive based on your criteria (e.g., distance threshold)
-                if distance < 1:  # Distance threshold for true positives (1 meter)
-                    true_positives += 1
-                else:
-                    false_positives += 1
-                    false_negatives += 1  # Count false negatives for objects that were not detected
-
-    # Increment frame count
-    frame_count += 1
-    
-    # Calculate and display FPS every 100 frames
-    if frame_count % 100 == 0:
-        elapsed_time = time.time() - start_time
-        fps = frame_count / elapsed_time
-        print(f"Frame: {frame_count}, FPS: {fps:.2f}")
-    
-    # Exit loop if 'q' is pressed
-    if cv.waitKey(1) == ord('q'):
-        break
-
-# Calculate and print accuracy, recall, precision, and F1-score
-accuracy = true_positives / (true_positives + false_negatives)
-recall = true_positives / (true_positives + false_negatives)
 precision = true_positives / (true_positives + false_positives)
-f1_score = 2 * (precision * recall) / (precision + recall)
+recall = true_positives / (true_positives + false_negatives)
+accuracy = true_positives / len(ground_truth_boxes)
 
-print(f"True Positives: {true_positives}")
-print(f"False Positives: {false_positives}")
-print(f"False Negatives: {false_negatives}")
-print(f"Accuracy: {accuracy:.2f}")
-print(f"Recall: {recall:.2f}")
-print(f"Precision: {precision:.2f}")
-print(f"F1-Score: {f1_score:.2f}")
+print('Precision:', precision)
+print('Recall:', recall)
+print('Accuracy:', accuracy)
 
-# Release video capture and close windows
-cap.release()
-cv.destroyAllWindows()
+# Calculate Average Precision (AP) at IoU threshold 0.5
+# This code assumes you have multiple predicted bounding boxes for each ground truth box
+average_precision = true_positives / (true_positives + false_positives)
+print('Average Precision (AP@0.5):', average_precision)
